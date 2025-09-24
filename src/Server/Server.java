@@ -2,6 +2,9 @@ package Server;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
+import java.time.LocalTime;
+import java.util.Scanner;
+import Server.ClientData;
 
 public class Server {
 	private static ServerSocket Listener;
@@ -21,28 +24,41 @@ public class Server {
 		
 		return false;
 	}
+	
+	
 	public static void main(String[] args) throws Exception{
 		
 		int clientNumber = 0;
-		String serverAddress = "127.0.0.1";
-		int serverPort = 5000;
+
+		Scanner inputStream = new Scanner(System.in);
+		System.out.println("Enter the address you wish to connect to: (i.e ipAddress:Port) ");
+		String input = inputStream.nextLine();
+		String[] inputElements = input.split(":");
+		String serverAddress = inputElements[0];
+		int serverPort = Integer.parseInt(inputElements[1]);
+		inputStream.close();
 		
-		Listener = new ServerSocket();
-		Listener.setReuseAddress(true);
-		InetAddress serverIP = InetAddress.getByName(serverAddress);
-		
-		Listener.bind(new InetSocketAddress(serverIP, serverPort));
-		
-		System.out.format("The server is running on %s:%d%n", serverAddress, serverPort);
-		
-		try {
-			while(true) {
-				new ClientHandler(Listener.accept(), clientNumber++).start();
+		if(isValidatedAddressAndPort(serverAddress, serverPort)) {
+			
+			Listener = new ServerSocket();
+			Listener.setReuseAddress(true);
+			InetAddress serverIP = InetAddress.getByName(serverAddress);
+			
+			Listener.bind(new InetSocketAddress(serverIP, serverPort));
+			
+			System.out.format("The server is running on %s:%d%n", serverAddress, serverPort);
+			
+			try {
+				while(true) {
+					new ClientHandler(Listener.accept(), clientNumber++).start();
+				}
+			}
+			finally {
+				Listener.close();
 			}
 		}
-		finally {
-			Listener.close();
-		}
+		
+		
 	}
 
 }
