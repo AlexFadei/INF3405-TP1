@@ -76,7 +76,7 @@ public class ClientHandler extends Thread {
 		    		
 	    		}
 	    		catch (Exception e){
-	    			System.out.println("Couldn't get input from socket");
+	    			//System.out.println("Couldn't get input from socket");
 	    		}
 
 	    	}
