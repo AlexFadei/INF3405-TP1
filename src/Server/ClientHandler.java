@@ -3,6 +3,9 @@ import java.io.BufferedReader;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOError;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
@@ -44,6 +47,7 @@ public class ClientHandler extends Thread {
 		case "delete": handleDelete(arg); break;
 		
 		case "exit":
+			this.sendStringToClient("Vous avez été déconnecté");
 			
 			this.exitSocket = true;
 			break;
@@ -60,8 +64,9 @@ public class ClientHandler extends Thread {
 			return false;
 		}
 		for(File file : listFiles) {
+			outputList.append(file.isDirectory()? "[Folder]" : "[File]");
 			outputList.append(file.getName());
-			outputList.append(file.isDirectory()? "/" : "");
+			
 			outputList.append("\n");
 		}
 		this.sendStringToClient(outputList.toString());
@@ -69,6 +74,7 @@ public class ClientHandler extends Thread {
 		return true;
 		};
 	public boolean handleCd(String arg) {
+		
 		if(arg.isEmpty()) {
 			this.sendStringToClient("invalid directory");
 			return false;
@@ -76,8 +82,9 @@ public class ClientHandler extends Thread {
 		File requestedFileDirectory = new File(this.currentFileDirectory, arg).getAbsoluteFile();
 		if( requestedFileDirectory.exists() &&  requestedFileDirectory.isDirectory()) {
 			this.currentFileDirectory =  requestedFileDirectory;
+			this.sendStringToClient("changed directory to: " + arg);
 		}
-		this.sendStringToClient("changed directory to: " + arg);
+		
 		
 		return true;};
 	public boolean handleMkDir(String name) {
@@ -87,34 +94,97 @@ public class ClientHandler extends Thread {
 		}
 		File createdFile = new File(this.currentFileDirectory, name);
 	    if (createdFile.mkdir()) {
-	    	this.sendStringToClient("Directory created: " + createdFile.getAbsolutePath());
+	    	this.sendStringToClient("Le dossier " + createdFile.getName() + " a été créé.");
 	    } else {
-	        this.sendStringToClient( "Failed to create directory: " + name);
+	        this.sendStringToClient( "erreur dans la création du dossier " + name);
 	    }
 		
 		
 		return true;};
 	public boolean handleDelete(String name) {
 		if(name.isEmpty()) {
-			this.sendStringToClient("invalid name");
+			this.sendStringToClient("nom invalide");
 			return false;
 		}
 		File target = new File(this.currentFileDirectory, name);
 		if(!target.exists()) {
-			this.sendStringToClient( "File does not exist: " + name);
+			this.sendStringToClient( "le dossier/fichier " + name + " n'existe pas.");
 			return false;
 		}
-	    boolean success = target.isDirectory() ? target.delete() : target.delete();
-	    if (success) {
-	        this.sendStringToClient("Deleted: " + name);
+	    boolean isDirectory = target.isDirectory() ? target.delete() : target.delete();
+	    if (isDirectory) {
+	        this.sendStringToClient("le dossier " + name + " a été supprimé");
 	    } else {
-	        this.sendStringToClient("Failed to delete: " + name);
-	        return false;
+	        this.sendStringToClient("le fichier " + name + " a été supprimé");
 	    }
 		
 		return true;};
-	public boolean handleUpload(String arg) {return false;};
-	public boolean handleDownload(String arg) {return false;};
+	public boolean handleUpload(String fileName) {
+		if(fileName.isEmpty()){
+			this.sendStringToClient("Invalid parameters for upload");
+			return false;
+		}
+		File targetFile = new File(this.currentFileDirectory, fileName);
+		
+		try {
+	        DataInputStream in = new DataInputStream(this.socket.getInputStream());
+	        DataOutputStream out = new DataOutputStream(this.socket.getOutputStream());
+	        out.writeUTF("READY_FOR_UPLOAD");
+	        
+	        long fileSize = in.readLong();
+	        try (FileOutputStream fileOut = new FileOutputStream(targetFile)) {
+	            byte[] buffer = new byte[4096];
+	            long totalRead = 0;
+	            int bytesRead;
+	            while (totalRead < fileSize && (bytesRead = in.read(buffer, 0, (int)Math.min(buffer.length, fileSize - totalRead))) != -1) {
+	                fileOut.write(buffer, 0, bytesRead);
+	                totalRead += bytesRead;
+	            }
+	            this.sendStringToClient("Upload complete: " + targetFile.getAbsolutePath());
+	            return true;
+	        }
+			
+		}
+		catch(IOException e) {
+	        this.sendStringToClient("Upload failed: " + e.getMessage());
+	        return false;
+		}
+		
+	};
+	public boolean handleDownload(String fileName) {
+		if(fileName.isEmpty()){
+			this.sendStringToClient("Invalid parameters for download");
+			return false;
+		}
+		File targetFile = new File(this.currentFileDirectory, fileName);
+		if(targetFile.exists() || targetFile.isDirectory()) {
+			this.sendStringToClient("File not found" + fileName);
+			return false;
+		}
+		try {
+	        DataOutputStream out = new DataOutputStream(this.socket.getOutputStream());
+	        
+	        out.writeUTF("READY_FOR_DOWNLOAD");
+	        
+	        long fileSize = targetFile.length();
+	        out.writeLong(fileSize);
+	        
+			try (FileInputStream fileIn = new FileInputStream(targetFile)) {
+				byte[] buffer = new byte[4096];
+				int bytesRead;
+				while ((bytesRead = fileIn.read(buffer)) != -1) {
+					out.write(buffer, 0, bytesRead);
+				}
+			}
+
+			out.flush();
+			System.out.println("File sent: " + targetFile.getName());
+			return true;
+
+    	} catch (IOException e) {
+    		this.sendStringToClient("Download failed: " + e.getMessage());
+    		return false;
+    	}};
 	
 	public void sendStringToClient(String arg) {
 		try {
