@@ -27,7 +27,7 @@ public class Client {
 		if(isValidatedAddressAndPort(serverAddress, port)) {
 			//ouverture du socket
 			socket = new Socket(serverAddress, port);
-			System.out.format("Serveur lance sur [%s:%d]", serverAddress, port);
+			System.out.format("Serveur lance sur [%s:%d]\n", serverAddress, port);
 			
 			//on recupere le input stream pour pouvoir recevoir la reponse du serveur
 			DataInputStream in = new DataInputStream(socket.getInputStream());

@@ -1,4 +1,5 @@
 package Server;
+import java.io.File;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -8,6 +9,7 @@ import Server.ClientData;
 
 public class Server {
 	private static ServerSocket Listener;
+	
 	public static boolean isValidatedAddressAndPort(String address, int port) {
 		try {
 			InetAddress validatedAddress = InetAddress.getByName(address);
@@ -38,6 +40,11 @@ public class Server {
 		int serverPort = Integer.parseInt(inputElements[1]);
 		inputStream.close();
 		
+		File rootDir = new File(System.getProperty("user.dir") + File.separator + "server_storage");
+		if (!rootDir.exists()) {
+		    rootDir.mkdirs();
+		}
+		
 		if(isValidatedAddressAndPort(serverAddress, serverPort)) {
 			
 			Listener = new ServerSocket();
@@ -50,7 +57,7 @@ public class Server {
 			
 			try {
 				while(true) {
-					new ClientHandler(Listener.accept(), clientNumber++).start();
+					new ClientHandler(Listener.accept(), clientNumber++, rootDir).start();
 				}
 			}
 			finally {

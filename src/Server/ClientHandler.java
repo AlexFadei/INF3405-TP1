@@ -15,17 +15,20 @@ import LoggerUtil.LoggerUtil;
 
 //worker thread for the client
 public class ClientHandler extends Thread {
-	private File currentFileDirectory;
+	private File currentDir;
 	private Socket socket; private int clientNumber;
 	private boolean exitSocket;
+	private final File rootDir; 
 	
-	public ClientHandler(Socket socket, int clientNumber) {
-		this.socket = socket;
-		this.clientNumber = clientNumber; System.out.println("New connection with client#" + clientNumber + " at" + socket);
-		this.exitSocket = false;
-		this.currentFileDirectory = new File(System.getProperty("user.dir"));
-		
-	}
+	public ClientHandler(Socket socket, int clientNumber, File rootDir) {
+        this.socket = socket;
+        this.clientNumber = clientNumber;
+        this.currentDir = rootDir;
+        this.rootDir = rootDir;
+        System.out.println(rootDir);
+        System.out.println("New connection with client#" + clientNumber + " at " + socket);
+    }
+
 	public void ExecuteCommand(String command) {
 		String[] parts = command.split(" ", 2);
 		String cmd = parts[0];
@@ -36,15 +39,15 @@ public class ClientHandler extends Thread {
 				
 		case "ls": handleLs(); break;
 			
-		case "cd": handleCd(arg); break;
+		case "cd": handleCd(arg.trim()); break;
 			
-		case "mkdir": handleMkDir(arg); break;
+		case "mkdir": handleMkDir(arg.trim()); break;
 			
-		case "upload": handleUpload(arg); break;
+		case "upload": handleUpload(arg.trim()); break;
 			
-		case "download": handleDownload(arg); break;
+		case "download": handleDownload(arg.trim()); break;
 			
-		case "delete": handleDelete(arg); break;
+		case "delete": handleDelete(arg.trim()); break;
 		
 		case "exit":
 			this.sendStringToClient("Vous avez été déconnecté");
@@ -58,7 +61,7 @@ public class ClientHandler extends Thread {
 		
 	}
 	public boolean handleLs() {
-		File[] listFiles = this.currentFileDirectory.listFiles();
+		File[] listFiles = this.currentDir.listFiles();
 		StringBuilder outputList = new StringBuilder("");
 		if(listFiles == null) {
 			return false;
@@ -74,14 +77,23 @@ public class ClientHandler extends Thread {
 		return true;
 		};
 	public boolean handleCd(String arg) {
-		
 		if(arg.isEmpty()) {
 			this.sendStringToClient("invalid directory");
 			return false;
 		}
-		File requestedFileDirectory = new File(this.currentFileDirectory, arg).getAbsoluteFile();
+		if (arg.equals("..")) {
+	        if (currentDir.equals(rootDir)) {
+	            this.sendStringToClient("Already at root directory");
+	            return true;
+	        }
+
+	        currentDir = currentDir.getParentFile();
+	        this.sendStringToClient("Changed directory to: " + currentDir.getAbsolutePath());
+	        return true;
+	    }
+		File requestedFileDirectory = new File(this.currentDir, arg).getAbsoluteFile();
 		if( requestedFileDirectory.exists() &&  requestedFileDirectory.isDirectory()) {
-			this.currentFileDirectory =  requestedFileDirectory;
+			this.currentDir =  requestedFileDirectory;
 			this.sendStringToClient("changed directory to: " + arg);
 		}
 		
@@ -92,7 +104,7 @@ public class ClientHandler extends Thread {
 			this.sendStringToClient("invalid name");
 			return false;
 		}
-		File createdFile = new File(this.currentFileDirectory, name);
+		File createdFile = new File(this.currentDir, name);
 	    if (createdFile.mkdir()) {
 	    	this.sendStringToClient("Le dossier " + createdFile.getName() + " a été créé.");
 	    } else {
@@ -106,7 +118,7 @@ public class ClientHandler extends Thread {
 			this.sendStringToClient("nom invalide");
 			return false;
 		}
-		File target = new File(this.currentFileDirectory, name);
+		File target = new File(this.currentDir, name);
 		if(!target.exists()) {
 			this.sendStringToClient( "le dossier/fichier " + name + " n'existe pas.");
 			return false;
@@ -124,7 +136,7 @@ public class ClientHandler extends Thread {
 			this.sendStringToClient("Invalid parameters for upload");
 			return false;
 		}
-		File targetFile = new File(this.currentFileDirectory, fileName);
+		File targetFile = new File(this.currentDir, fileName);
 		
 		try {
 	        DataInputStream in = new DataInputStream(this.socket.getInputStream());
@@ -156,7 +168,7 @@ public class ClientHandler extends Thread {
 			this.sendStringToClient("Invalid parameters for download");
 			return false;
 		}
-		File targetFile = new File(this.currentFileDirectory, fileName);
+		File targetFile = new File(this.currentDir, fileName);
 		if(targetFile.exists() || targetFile.isDirectory()) {
 			this.sendStringToClient("File not found" + fileName);
 			return false;
