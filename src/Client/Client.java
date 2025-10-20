@@ -25,17 +25,14 @@ public class Client {
 		int port = Integer.parseInt(inputElements[1]);
 		
 		if(isValidatedAddressAndPort(serverAddress, port)) {
-			//ouverture du socket
-			socket = new Socket(serverAddress, port);
-			System.out.format("Serveur lance sur [%s:%d]\n", serverAddress, port);
-			
-			//on recupere le input stream pour pouvoir recevoir la reponse du serveur
-			DataInputStream in = new DataInputStream(socket.getInputStream());
-			DataOutputStream out = new DataOutputStream(socket.getOutputStream());
-			
-			String helloMessageFromServer = in.readUTF();
-			System.out.println(helloMessageFromServer);
-
+		    socket = new Socket(serverAddress, port);
+		    System.out.format("Serveur lance sur [%s:%d]\n", serverAddress, port);
+		    
+		    this.in = new DataInputStream(socket.getInputStream());
+		    this.out = new DataOutputStream(socket.getOutputStream());
+		    
+		    String helloMessageFromServer = this.in.readUTF();
+		    System.out.println(helloMessageFromServer);
 		}
     	
     }
@@ -67,15 +64,13 @@ public class Client {
 	public void ExecuteCommand(String command) {
 		DataOutputStream out;
 		try {
-			out = new DataOutputStream(socket.getOutputStream());
-			in = new DataInputStream(socket.getInputStream());
 			String[] parts = command.split(" ", 2);
 			switch(parts[0]) {
 				
 			case "exit":
 				LoggerUtil.log(socket, command);
-            	out.writeUTF(command);
-            	out.flush();
+            	this.out.writeUTF(command);
+            	this.out.flush();
 				System.out.format("Disconnecting [%s:%d]");
 				try {
 					socket.close();
@@ -84,17 +79,16 @@ public class Client {
 				
 				break;
 			case "upload":
-				LoggerUtil.log(socket, command);
-				
-				break;
-			case "download":
-				LoggerUtil.log(socket, command);
-				
-				break;
+	            if (parts.length > 1) {
+	                uploadFile(parts[1].trim());
+	            } else {
+	                System.out.println("Usage: upload <file-path>");
+	            }
+	            break;
 			default:
 	            try {
-	            	out.writeUTF(command);
-	            	out.flush();
+	            	this.out.writeUTF(command);
+	            	this.out.flush();
 	            	
 	                String response = in.readUTF();
 	                System.out.println(response);

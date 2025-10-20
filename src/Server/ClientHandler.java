@@ -29,7 +29,7 @@ public class ClientHandler extends Thread {
         System.out.println("New connection with client#" + clientNumber + " at " + socket);
     }
 
-	public void ExecuteCommand(String command) {
+	public void ExecuteCommand(String command, DataInputStream in, DataOutputStream out) throws IOException {
 		String[] parts = command.split(" ", 2);
 		String cmd = parts[0];
 		String arg = parts.length > 1 ? parts[1] : "";
@@ -43,9 +43,9 @@ public class ClientHandler extends Thread {
 			
 		case "mkdir": handleMkDir(arg.trim()); break;
 			
-		case "upload": handleUpload(arg.trim()); break;
+		case "upload": handleUpload(arg.trim(), in, out); break;
 			
-		case "download": handleDownload(arg.trim()); break;
+		case "download": handleDownload(arg.trim(), out); break;
 			
 		case "delete": handleDelete(arg.trim()); break;
 		
@@ -131,72 +131,53 @@ public class ClientHandler extends Thread {
 	    }
 		
 		return true;};
-	public boolean handleUpload(String fileName) {
-		if(fileName.isEmpty()){
-			this.sendStringToClient("Invalid parameters for upload");
-			return false;
-		}
-		File targetFile = new File(this.currentDir, fileName);
 		
-		try {
-	        DataInputStream in = new DataInputStream(this.socket.getInputStream());
-	        DataOutputStream out = new DataOutputStream(this.socket.getOutputStream());
-	        out.writeUTF("READY_FOR_UPLOAD");
-	        
-	        long fileSize = in.readLong();
-	        try (FileOutputStream fileOut = new FileOutputStream(targetFile)) {
-	            byte[] buffer = new byte[4096];
-	            long totalRead = 0;
-	            int bytesRead;
-	            while (totalRead < fileSize && (bytesRead = in.read(buffer, 0, (int)Math.min(buffer.length, fileSize - totalRead))) != -1) {
-	                fileOut.write(buffer, 0, bytesRead);
-	                totalRead += bytesRead;
-	            }
-	            this.sendStringToClient("Upload complete: " + targetFile.getAbsolutePath());
-	            return true;
-	        }
-			
-		}
-		catch(IOException e) {
-	        this.sendStringToClient("Upload failed: " + e.getMessage());
-	        return false;
-		}
-		
-	};
-	public boolean handleDownload(String fileName) {
-		if(fileName.isEmpty()){
-			this.sendStringToClient("Invalid parameters for download");
-			return false;
-		}
-		File targetFile = new File(this.currentDir, fileName);
-		if(targetFile.exists() || targetFile.isDirectory()) {
-			this.sendStringToClient("File not found" + fileName);
-			return false;
-		}
-		try {
-	        DataOutputStream out = new DataOutputStream(this.socket.getOutputStream());
-	        
-	        out.writeUTF("READY_FOR_DOWNLOAD");
-	        
-	        long fileSize = targetFile.length();
-	        out.writeLong(fileSize);
-	        
-			try (FileInputStream fileIn = new FileInputStream(targetFile)) {
-				byte[] buffer = new byte[4096];
-				int bytesRead;
-				while ((bytesRead = fileIn.read(buffer)) != -1) {
-					out.write(buffer, 0, bytesRead);
-				}
-			}
+	private void handleUpload(String fileName, DataInputStream in, DataOutputStream out) throws IOException {
+        if (fileName.isEmpty()) {
+            out.writeUTF("Invalid parameters for upload.");
+            return;
+        }
 
-			out.flush();
-			System.out.println("File sent: " + targetFile.getName());
-			return true;
+        File target = new File(currentDir, fileName);
+        out.writeUTF("READY_FOR_UPLOAD");
 
-    	} catch (IOException e) {
-    		this.sendStringToClient("Download failed: " + e.getMessage());
-    		return false;
-    	}};
+        long fileSize = in.readLong();
+        try (FileOutputStream fos = new FileOutputStream(target)) {
+            byte[] buffer = new byte[4096];
+            long totalRead = 0;
+            int bytesRead;
+            while (totalRead < fileSize &&
+                    (bytesRead = in.read(buffer, 0, (int) Math.min(buffer.length, fileSize - totalRead))) != -1) {
+                fos.write(buffer, 0, bytesRead);
+                totalRead += bytesRead;
+            }
+        }
+
+        out.writeUTF("Upload complete: " + fileName);
+        System.out.println("File uploaded by client#" + clientNumber + ": " + target.getAbsolutePath());
+    }
+
+    private void handleDownload(String fileName, DataOutputStream out) throws IOException {
+        File file = new File(currentDir, fileName);
+        if (!file.exists() || file.isDirectory()) {
+            out.writeUTF("File not found: " + fileName);
+            return;
+        }
+
+        out.writeUTF("READY_FOR_DOWNLOAD");
+        out.writeLong(file.length());
+
+        try (FileInputStream fis = new FileInputStream(file)) {
+            byte[] buffer = new byte[4096];
+            int bytesRead;
+            while ((bytesRead = fis.read(buffer)) != -1) {
+                out.write(buffer, 0, bytesRead);
+            }
+        }
+
+        out.writeUTF("Download complete: " + fileName);
+        System.out.println("File sent to client#" + clientNumber + ": " + file.getAbsolutePath());
+    }
 	
 	public void sendStringToClient(String arg) {
 		try {
@@ -219,10 +200,11 @@ public class ClientHandler extends Thread {
 	    	while(!this.exitSocket) {
 	    		try {
 	    			DataInputStream in = new DataInputStream(socket.getInputStream());
+	                DataOutputStream out = new DataOutputStream(socket.getOutputStream());
 	    			
 		    		String command;
 		    		while((command = in.readUTF()) != null) {
-		    			ExecuteCommand(command);
+		    			ExecuteCommand(command, in, out);
 		    		}
 		    		
 	    		}
