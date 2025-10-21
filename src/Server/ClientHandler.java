@@ -55,7 +55,7 @@ public class ClientHandler extends Thread {
 			this.exitSocket = true;
 			break;
 		default:
-			this.sendStringToClient("Unrecognised Command, please try again");
+			this.sendStringToClient("Commande non reconnue: veuillez réessayer");
 			break;
 		}
 		
@@ -78,44 +78,45 @@ public class ClientHandler extends Thread {
 		};
 	public boolean handleCd(String arg) {
 		if(arg.isEmpty()) {
-			this.sendStringToClient("invalid directory");
+			this.sendStringToClient("répertoire invalide");
 			return false;
 		}
 		if (arg.equals("..")) {
 	        if (currentDir.equals(rootDir)) {
-	            this.sendStringToClient("Already at root directory");
+	            this.sendStringToClient("Vous êtes déjà à la racine");
 	            return true;
 	        }
 
 	        currentDir = currentDir.getParentFile();
-	        this.sendStringToClient("Changed directory to: " + currentDir.getAbsolutePath());
+	        String relativePath = rootDir.toPath().relativize(currentDir.toPath()).toString();
+	        this.sendStringToClient("Vous êtes dans le dossier " +  relativePath + ".");
 	        return true;
 	    }
 		File requestedFileDirectory = new File(this.currentDir, arg).getAbsoluteFile();
 		if( requestedFileDirectory.exists() &&  requestedFileDirectory.isDirectory()) {
 			this.currentDir =  requestedFileDirectory;
-			this.sendStringToClient("changed directory to: " + arg);
+			this.sendStringToClient("Vous êtes dans le dossier " + arg + ".");
 		}
 		
 		
 		return true;};
 	public boolean handleMkDir(String name) {
 		if(name.isEmpty()) {
-			this.sendStringToClient("invalid name");
+			this.sendStringToClient("nom invalide\n");
 			return false;
 		}
 		File createdFile = new File(this.currentDir, name);
 	    if (createdFile.mkdir()) {
 	    	this.sendStringToClient("Le dossier " + createdFile.getName() + " a été créé.");
 	    } else {
-	        this.sendStringToClient( "erreur dans la création du dossier " + name);
+	        this.sendStringToClient( "erreur dans la création du dossier " + name+ ".");
 	    }
 		
 		
 		return true;};
 	public boolean handleDelete(String name) {
 		if(name.isEmpty()) {
-			this.sendStringToClient("nom invalide");
+			this.sendStringToClient("nom invalide\n");
 			return false;
 		}
 		File target = new File(this.currentDir, name);
@@ -125,16 +126,16 @@ public class ClientHandler extends Thread {
 		}
 	    boolean isDirectory = target.isDirectory() ? target.delete() : target.delete();
 	    if (isDirectory) {
-	        this.sendStringToClient("le dossier " + name + " a été supprimé");
+	        this.sendStringToClient("le dossier " + name + " a été supprimé.");
 	    } else {
-	        this.sendStringToClient("le fichier " + name + " a été supprimé");
+	        this.sendStringToClient("le fichier " + name + " a été supprimé.");
 	    }
 		
 		return true;};
 		
 	private void handleUpload(String fileName, DataInputStream in, DataOutputStream out) throws IOException {
         if (fileName.isEmpty()) {
-            out.writeUTF("Invalid parameters for upload.");
+            out.writeUTF("nom de fichier invalide");
             return;
         }
 
@@ -153,14 +154,14 @@ public class ClientHandler extends Thread {
             }
         }
 
-        out.writeUTF("Upload complete: " + fileName);
+        out.writeUTF("Le fichier " + fileName + " a bien été téléversé.");
         System.out.println("File uploaded by client#" + clientNumber + ": " + target.getAbsolutePath());
     }
 
     private void handleDownload(String fileName, DataOutputStream out) throws IOException {
         File file = new File(currentDir, fileName);
         if (!file.exists() || file.isDirectory()) {
-            out.writeUTF("File not found: " + fileName);
+            out.writeUTF("Le ficher n'existe pas: " + fileName);
             return;
         }
 
@@ -175,7 +176,7 @@ public class ClientHandler extends Thread {
             }
         }
 
-        out.writeUTF("Download complete: " + fileName);
+        out.writeUTF("Le fichier " + fileName + " a bien été téléchargé.");
         System.out.println("File sent to client#" + clientNumber + ": " + file.getAbsolutePath());
     }
 	
@@ -191,7 +192,7 @@ public class ClientHandler extends Thread {
 	public void run() {
 		try {
 			DataOutputStream out = new DataOutputStream(socket.getOutputStream());
-			out.writeUTF("Hello from server - you are client#" + clientNumber);
+			out.writeUTF("Bonjour du serveur, vous êtes le client#" + clientNumber);
 		}
 		catch (IOException e) {
 			System.out.println("Error handling client# " + clientNumber + ": " + e);
@@ -209,7 +210,6 @@ public class ClientHandler extends Thread {
 		    		
 	    		}
 	    		catch (Exception e){
-	    			System.out.println("Couldn't get input from socket");
 	    		}
 
 	    	}
@@ -218,7 +218,7 @@ public class ClientHandler extends Thread {
 	        } catch (IOException e) {
 	            System.out.println("Couldn't close a socket, what's going on?");
 	        }
-	        System.out.println("Connection with client# " + clientNumber+ " closed");
+	        System.out.println("Connection with client# " + clientNumber+ " closed.");
 	    }
 	}
 }

@@ -29,16 +29,24 @@ public class Server {
 	
 	
 	public static void main(String[] args) throws Exception{
-		
-		int clientNumber = 0;
-
 		Scanner inputStream = new Scanner(System.in);
+		String serverAddress;
+		int serverPort;
+		int clientNumber = 0;
+		while(true) {
+		
 		System.out.println("Enter the address you wish to connect to: (i.e ipAddress:Port) ");
 		String input = inputStream.nextLine();
 		String[] inputElements = input.split(":");
-		String serverAddress = inputElements[0];
-		int serverPort = Integer.parseInt(inputElements[1]);
-		inputStream.close();
+        if (inputElements.length < 2) {
+            System.out.println("Invalid input. Please enter IP and port like this: 127.0.0.1:5000");
+            continue;
+        }
+        else {
+		serverAddress = inputElements[0];
+		serverPort = Integer.parseInt(inputElements[1]);
+        }
+		
 		
 		File rootDir = new File(System.getProperty("user.dir") + File.separator + "server_storage");
 		if (!rootDir.exists()) {
@@ -46,7 +54,7 @@ public class Server {
 		}
 		
 		if(isValidatedAddressAndPort(serverAddress, serverPort)) {
-			
+			inputStream.close();
 			Listener = new ServerSocket();
 			Listener.setReuseAddress(true);
 			InetAddress serverIP = InetAddress.getByName(serverAddress);
@@ -62,8 +70,10 @@ public class Server {
 			}
 			finally {
 				Listener.close();
-			}
 		}
+		}
+		}
+		
 		
 		
 	}

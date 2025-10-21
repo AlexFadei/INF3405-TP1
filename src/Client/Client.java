@@ -18,12 +18,16 @@ public class Client {
     private static final Scanner scanner = new Scanner(System.in);
     
     Client() throws Exception{
+    	while(true) {
 		System.out.println("Enter the address you wish to connect to: (i.e ipAddress:Port) ");
 		String input = scanner.nextLine();
 		String[] inputElements = input.split(":");
+        if (inputElements.length < 2) {
+            System.out.println("Invalid input. Please enter IP and port like this: 127.0.0.1:5000");
+            continue;
+        }
 		String serverAddress = inputElements[0];
 		int port = Integer.parseInt(inputElements[1]);
-		
 		if(isValidatedAddressAndPort(serverAddress, port)) {
 		    socket = new Socket(serverAddress, port);
 		    System.out.format("Serveur lance sur [%s:%d]\n", serverAddress, port);
@@ -33,8 +37,10 @@ public class Client {
 		    
 		    String helloMessageFromServer = this.in.readUTF();
 		    System.out.println(helloMessageFromServer);
+		    break;
 		}
     	
+    }
     }
     
     
@@ -71,7 +77,6 @@ public class Client {
 				LoggerUtil.log(socket, command);
             	this.out.writeUTF(command);
             	this.out.flush();
-				System.out.format("Disconnecting [%s:%d]");
 				try {
 					socket.close();
 				}
@@ -81,9 +86,7 @@ public class Client {
 			case "upload":
 	            if (parts.length > 1) {
 	                uploadFile(parts[1].trim());
-	            } else {
-	                System.out.println("Usage: upload <file-path>");
-	            }
+	            } 
 	            break;
 			default:
 	            try {
