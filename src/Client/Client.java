@@ -19,29 +19,28 @@ public class Client {
     private static final Scanner scanner = new Scanner(System.in);
     
     Client() throws Exception{
-		System.out.println("Entrez l'adresse à laquelle vous souhaitez vous connectez : (ipAddress:Port)");
-		String input = scanner.nextLine();
-		String[] inputElements = input.split(":");
-        if (inputElements.length < 2) {
-            System.out.println("Invalid input. Please enter IP and port like this: 127.0.0.1:5000");
-            continue;
-        }
-		String serverAddress = inputElements[0];
-		int port = Integer.parseInt(inputElements[1]);
-		if(isValidatedAddressAndPort(serverAddress, port)) {
-		    socket = new Socket(serverAddress, port);
-		    System.out.format("Serveur lancé sur [%s:%d]\n", serverAddress, port);
-		    
-		    this.in = new DataInputStream(socket.getInputStream());
-		    this.out = new DataOutputStream(socket.getOutputStream());
-		    
-		    String helloMessageFromServer = this.in.readUTF();
-		    System.out.println(helloMessageFromServer);
-		    break;
-		}
-    	
+    	boolean invalid = true; 
+    	while(invalid) {
+			System.out.println("Entrez l'adresse à laquelle vous souhaitez vous connectez : (ipAddress:Port)");
+			String input = scanner.nextLine();
+			String[] inputElements = input.split(":");
+			String serverAddress = inputElements[0];
+			int port = Integer.parseInt(inputElements[1]);
+			invalid = !isValidatedAddressAndPort(serverAddress, port);
+			
+			if(!invalid) {
+			    socket = new Socket(serverAddress, port);
+			    System.out.format("Serveur lance sur [%s:%d]\n", serverAddress, port);
+			    
+			    this.in = new DataInputStream(socket.getInputStream());
+			    this.out = new DataOutputStream(socket.getOutputStream());
+			    
+			    String helloMessageFromServer = this.in.readUTF();
+			    System.out.println(helloMessageFromServer);
+			}
     }
     }
+    
     
     
 	public static boolean isValidatedAddressAndPort(String address, int port) {
@@ -94,6 +93,7 @@ public class Client {
 			case "download": 
 				String filename = command.substring(9).trim();
 			    downloadFile(filename);
+			    break;
 			default:
 	            try {
 	            	this.out.writeUTF(command);
