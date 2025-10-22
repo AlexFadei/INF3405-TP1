@@ -26,7 +26,7 @@ public class ClientHandler extends Thread {
         this.currentDir = rootDir;
         this.rootDir = rootDir;
         System.out.println(rootDir);
-        System.out.println("New connection with client#" + clientNumber + " at " + socket);
+        System.out.println("Nouvelle connexion avec le client#" + clientNumber + " sur " + socket);
     }
 
 	public void ExecuteCommand(String command, DataInputStream in, DataOutputStream out) throws IOException {
@@ -78,7 +78,7 @@ public class ClientHandler extends Thread {
 		};
 	public boolean handleCd(String arg) {
 		if(arg.isEmpty()) {
-			this.sendStringToClient("répertoire invalide");
+			this.sendStringToClient("dossier invalide");
 			return false;
 		}
 		if (arg.equals("..")) {
@@ -114,28 +114,54 @@ public class ClientHandler extends Thread {
 		
 		
 		return true;};
+		
 	public boolean handleDelete(String name) {
 		if(name.isEmpty()) {
 			this.sendStringToClient("nom invalide\n");
 			return false;
 		}
+		
 		File target = new File(this.currentDir, name);
+		
 		if(!target.exists()) {
 			this.sendStringToClient( "le dossier/fichier " + name + " n'existe pas.");
 			return false;
 		}
-	    boolean isDirectory = target.isDirectory() ? target.delete() : target.delete();
-	    if (isDirectory) {
-	        this.sendStringToClient("le dossier " + name + " a été supprimé.");
-	    } else {
-	        this.sendStringToClient("le fichier " + name + " a été supprimé.");
-	    }
 		
-		return true;};
+	    boolean isDirectory = target.isDirectory();
+	    try {
+	        deleteRecursively(target);
+
+	        if (isDirectory) {
+	            this.sendStringToClient("le dossier " + name + " a été supprimé");
+	        } else {
+	            this.sendStringToClient("le fichier " + name + " a été supprimé");
+	        }
+
+	        return true;
+	    } catch (IOException e) {
+	        this.sendStringToClient("Erreur lors de la suppression de " + name + " : " + e.getMessage());
+	        return false;
+	    }
+	}
+		
+	private void deleteRecursively(File file) throws IOException {
+	    if (file.isDirectory()) {
+	        File[] entries = file.listFiles();
+	        if (entries != null) {
+	            for (File entry : entries) {
+	                deleteRecursively(entry);
+	            }
+	        }
+	    }
+	    if (!file.delete()) {
+	        throw new IOException("Impossible de supprimer : " + file.getAbsolutePath());
+	    }
+	}
 		
 	private void handleUpload(String fileName, DataInputStream in, DataOutputStream out) throws IOException {
         if (fileName.isEmpty()) {
-            out.writeUTF("nom de fichier invalide");
+            out.writeUTF("Paramètres invalides pour upload.");
             return;
         }
 
@@ -154,48 +180,54 @@ public class ClientHandler extends Thread {
             }
         }
 
-        out.writeUTF("Le fichier " + fileName + " a bien été téléversé.");
-        System.out.println("File uploaded by client#" + clientNumber + ": " + target.getAbsolutePath());
+        out.writeUTF("Upload réussi : " + fileName);
+        System.out.println("Fichier upload par client#" + clientNumber + ": " + target.getAbsolutePath());
     }
 
-    private void handleDownload(String fileName, DataOutputStream out) throws IOException {
-        File file = new File(currentDir, fileName);
-        if (!file.exists() || file.isDirectory()) {
-            out.writeUTF("Le ficher n'existe pas: " + fileName);
-            return;
-        }
+	private void handleDownload(String fileName, DataOutputStream out) throws IOException {
+	    if (fileName.isEmpty()) {
+	        out.writeUTF("Paramètre invalides pour download.");
+	        return;
+	    }
 
-        out.writeUTF("READY_FOR_DOWNLOAD");
-        out.writeLong(file.length());
+	    File target = new File(currentDir, fileName);
+	    if (!target.exists() || !target.isFile()) {
+	        out.writeUTF("ERROR: Fichier introuvable sur le serveur.");
+	        return;
+	    }
 
-        try (FileInputStream fis = new FileInputStream(file)) {
-            byte[] buffer = new byte[4096];
-            int bytesRead;
-            while ((bytesRead = fis.read(buffer)) != -1) {
-                out.write(buffer, 0, bytesRead);
-            }
-        }
+	    out.writeUTF("READY_FOR_DOWNLOAD");
+	    out.writeLong(target.length());
 
-        out.writeUTF("Le fichier " + fileName + " a bien été téléchargé.");
-        System.out.println("File sent to client#" + clientNumber + ": " + file.getAbsolutePath());
-    }
+	    try (FileInputStream fis = new FileInputStream(target)) {
+	        byte[] buffer = new byte[4096];
+	        int bytesRead;
+	        while ((bytesRead = fis.read(buffer)) != -1) {
+	            out.write(buffer, 0, bytesRead);
+	        }
+	        out.flush();
+	    }
+
+	    out.writeUTF("Download réussi : " + fileName);
+	    System.out.println("Fichier envoyé à client#" + clientNumber + ": " + target.getAbsolutePath());
+	}
 	
 	public void sendStringToClient(String arg) {
 		try {
 			DataOutputStream out = new DataOutputStream(this.socket.getOutputStream());
 			out.writeUTF(arg);
 		} catch (IOException e) {
-			System.out.println("Error handling command from client# " + clientNumber + ": " + e);
+			System.out.println("Erreur lors du traitement de la commande du client# " + clientNumber + ": " + e);
 		}
 	}
 
 	public void run() {
 		try {
 			DataOutputStream out = new DataOutputStream(socket.getOutputStream());
-			out.writeUTF("Bonjour du serveur, vous êtes le client#" + clientNumber);
+			out.writeUTF("Bonjour du serveur - vous êtes le client#" + clientNumber);
 		}
 		catch (IOException e) {
-			System.out.println("Error handling client# " + clientNumber + ": " + e);
+			System.out.println("Erreur lors de la gestion du client# " + clientNumber + ": " + e);
 		}
 	    finally {
 	    	while(!this.exitSocket) {
@@ -210,15 +242,16 @@ public class ClientHandler extends Thread {
 		    		
 	    		}
 	    		catch (Exception e){
+	    			System.out.println("Impossible d’obtenir les données depuis le socket");
 	    		}
 
 	    	}
 	        try {
 	            socket.close();
 	        } catch (IOException e) {
-	            System.out.println("Couldn't close a socket, what's going on?");
+	            System.out.println("Impossible de fermer le socket, que se passe-t-il ?");
 	        }
-	        System.out.println("Connection with client# " + clientNumber+ " closed.");
+	        System.out.println("Connection avec le client# " + clientNumber+ " fermée");
 	    }
 	}
 }

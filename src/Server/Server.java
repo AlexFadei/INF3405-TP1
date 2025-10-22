@@ -15,14 +15,14 @@ public class Server {
 			InetAddress validatedAddress = InetAddress.getByName(address);
 		}
 		catch(Exception error){
-			System.out.println("The ip address given is invalid");
+			System.out.println("L'adresse IP donnée est invalide");
 			return false;
 			
 		}
 		if(port >= 5000 && port <= 5050) {
 			return true;
 		}
-		System.out.println("The port given is invalid (outside of range (5000-5050))");
+		System.out.println("Le port donné est invalide (hors de l'intervalle (5000-5050))");
 		
 		return false;
 	}
@@ -30,12 +30,7 @@ public class Server {
 	
 	public static void main(String[] args) throws Exception{
 		Scanner inputStream = new Scanner(System.in);
-		String serverAddress;
-		int serverPort;
-		int clientNumber = 0;
-		while(true) {
-		
-		System.out.println("Enter the address you wish to connect to: (i.e ipAddress:Port) ");
+		System.out.println("Entrez l'adresse à laquelle vous souhaitez vous connectez : (ipAddress:Port)");
 		String input = inputStream.nextLine();
 		String[] inputElements = input.split(":");
         if (inputElements.length < 2) {
@@ -61,7 +56,7 @@ public class Server {
 			
 			Listener.bind(new InetSocketAddress(serverIP, serverPort));
 			
-			System.out.format("The server is running on %s:%d%n", serverAddress, serverPort);
+			System.out.format("Le serveur fonctionne sur %s:%d%n", serverAddress, serverPort);
 			
 			try {
 				while(true) {
