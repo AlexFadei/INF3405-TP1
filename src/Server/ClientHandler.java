@@ -89,7 +89,7 @@ public class ClientHandler extends Thread {
 
 	        currentDir = currentDir.getParentFile();
 	        String relativePath = rootDir.toPath().relativize(currentDir.toPath()).toString();
-	        this.sendStringToClient("Vous êtes dans le dossier " +  relativePath + ".");
+	        this.sendStringToClient("Vous êtes dans le dossier " +  (relativePath.equals("") ? "racine" : relativePath) + ".");
 	        return true;
 	    }
 		File requestedFileDirectory = new File(this.currentDir, arg).getAbsoluteFile();
@@ -192,7 +192,7 @@ public class ClientHandler extends Thread {
 
 	    File target = new File(currentDir, fileName);
 	    if (!target.exists() || !target.isFile()) {
-	        out.writeUTF("ERROR: Fichier introuvable sur le serveur.");
+	        out.writeUTF("ERREUR: Fichier introuvable sur le serveur.");
 	        return;
 	    }
 
@@ -243,6 +243,7 @@ public class ClientHandler extends Thread {
 	    		}
 	    		catch (Exception e){
 	    			System.out.println("Impossible d’obtenir les données depuis le socket");
+	    			this.exitSocket = true;
 	    		}
 
 	    	}

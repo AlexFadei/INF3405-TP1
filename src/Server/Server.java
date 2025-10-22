@@ -9,6 +9,7 @@ import Server.ClientData;
 
 public class Server {
 	private static ServerSocket Listener;
+	private static int clientNumber = 0;
 	
 	public static boolean isValidatedAddressAndPort(String address, int port) {
 		try {
@@ -33,14 +34,9 @@ public class Server {
 		System.out.println("Entrez l'adresse à laquelle vous souhaitez vous connectez : (ipAddress:Port)");
 		String input = inputStream.nextLine();
 		String[] inputElements = input.split(":");
-        if (inputElements.length < 2) {
-            System.out.println("Invalid input. Please enter IP and port like this: 127.0.0.1:5000");
-            continue;
-        }
-        else {
-		serverAddress = inputElements[0];
-		serverPort = Integer.parseInt(inputElements[1]);
-        }
+        
+		String serverAddress = inputElements[0];
+		int serverPort = Integer.parseInt(inputElements[1]);
 		
 		
 		File rootDir = new File(System.getProperty("user.dir") + File.separator + "server_storage");
@@ -60,7 +56,7 @@ public class Server {
 			
 			try {
 				while(true) {
-					new ClientHandler(Listener.accept(), clientNumber++, rootDir).start();
+					new ClientHandler(Listener.accept(), clientNumber ++, rootDir).start();
 				}
 			}
 			finally {
@@ -73,4 +69,3 @@ public class Server {
 		
 	}
 
-}
