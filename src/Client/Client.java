@@ -22,9 +22,12 @@ public class Client {
 		System.out.println("Entrez l'adresse à laquelle vous souhaitez vous connectez : (ipAddress:Port)");
 		String input = scanner.nextLine();
 		String[] inputElements = input.split(":");
+        if (inputElements.length < 2) {
+            System.out.println("Invalid input. Please enter IP and port like this: 127.0.0.1:5000");
+            continue;
+        }
 		String serverAddress = inputElements[0];
 		int port = Integer.parseInt(inputElements[1]);
-		
 		if(isValidatedAddressAndPort(serverAddress, port)) {
 		    socket = new Socket(serverAddress, port);
 		    System.out.format("Serveur lancé sur [%s:%d]\n", serverAddress, port);
@@ -34,8 +37,10 @@ public class Client {
 		    
 		    String helloMessageFromServer = this.in.readUTF();
 		    System.out.println(helloMessageFromServer);
+		    break;
 		}
     	
+    }
     }
     
     

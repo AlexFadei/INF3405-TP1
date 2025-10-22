@@ -83,32 +83,33 @@ public class ClientHandler extends Thread {
 		}
 		if (arg.equals("..")) {
 	        if (currentDir.equals(rootDir)) {
-	            this.sendStringToClient("Déjà au fichier racine");
+	            this.sendStringToClient("Vous êtes déjà à la racine");
 	            return true;
 	        }
 
 	        currentDir = currentDir.getParentFile();
-	        this.sendStringToClient("Changement de dossier vers : " + currentDir.getAbsolutePath());
+	        String relativePath = rootDir.toPath().relativize(currentDir.toPath()).toString();
+	        this.sendStringToClient("Vous êtes dans le dossier " +  relativePath + ".");
 	        return true;
 	    }
 		File requestedFileDirectory = new File(this.currentDir, arg).getAbsoluteFile();
 		if( requestedFileDirectory.exists() &&  requestedFileDirectory.isDirectory()) {
 			this.currentDir =  requestedFileDirectory;
-			this.sendStringToClient("Changement de dossier vers : " + arg);
+			this.sendStringToClient("Vous êtes dans le dossier " + arg + ".");
 		}
 		
 		
 		return true;};
 	public boolean handleMkDir(String name) {
 		if(name.isEmpty()) {
-			this.sendStringToClient("nom invalide");
+			this.sendStringToClient("nom invalide\n");
 			return false;
 		}
 		File createdFile = new File(this.currentDir, name);
 	    if (createdFile.mkdir()) {
 	    	this.sendStringToClient("Le dossier " + createdFile.getName() + " a été créé.");
 	    } else {
-	        this.sendStringToClient( "erreur dans la création du dossier " + name);
+	        this.sendStringToClient( "erreur dans la création du dossier " + name+ ".");
 	    }
 		
 		
@@ -116,7 +117,7 @@ public class ClientHandler extends Thread {
 		
 	public boolean handleDelete(String name) {
 		if(name.isEmpty()) {
-			this.sendStringToClient("nom invalide");
+			this.sendStringToClient("nom invalide\n");
 			return false;
 		}
 		
